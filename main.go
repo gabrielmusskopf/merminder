@@ -119,7 +119,9 @@ func (m *Merminder) fetchMergeRequests(git *gitlab.Client) {
         return
     }
     if config.GetConfig().NotificationEnabled() {
-        m.notifier.Notify(t)
+        if err := m.notifier.Notify(t); err != nil {
+            logger.Error(err)
+        }
     }
 }
 
@@ -130,7 +132,7 @@ func main() {
     config.LogInfo()
 
 	merminder := &Merminder{
-		notifier: notify.NewTeamsNotifier(config.Send.WebhookURL),
+		notifier: *notify.NewNotifier(config.Send.WebhookURL),
 	}
 
 	var opt gitlab.ClientOptionFunc

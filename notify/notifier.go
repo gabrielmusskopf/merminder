@@ -8,12 +8,18 @@ import (
 	"github.com/gabrielmusskopf/merminder/logger"
 )
 
-type Notifier interface {
-	Notify(string)
+type Notifier struct {
+	Url string
 }
 
-func Send(url string, body []byte) error {
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+func NewNotifier(url string) *Notifier {
+	return &Notifier{
+		Url: url,
+	}
+}
+
+func (n *Notifier) Notify(body string) error {
+	resp, err := http.Post(n.Url, "application/json", bytes.NewBuffer([]byte(body)))
 	if err != nil {
 		return err
 	}
