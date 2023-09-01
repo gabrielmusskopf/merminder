@@ -118,7 +118,9 @@ func (m *Merminder) fetchMergeRequests(git *gitlab.Client) {
         logger.Error(err)
         return
     }
-    m.notifier.Notify(t)
+    if config.GetConfig().NotificationEnabled() {
+        m.notifier.Notify(t)
+    }
 }
 
 

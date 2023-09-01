@@ -10,17 +10,17 @@
                 "title": "Merge Requests",
                 "sections": [
                     {
-                        "text": "<blockquote><h1><strong>Quantidade de merge requests: {{ . | len -}}</strong></h1></blockquote><br/>"
+                        "text": "<blockquote><h1><strong>Merge Request Count: {{ . | len -}}</strong></h1></blockquote><br/>"
                     },
                     {{ range . }}
                     {
                         "text": "<h1><strong>{{ .MergeRequestTitle }}</strong></h1><h2><strong>Status:</strong> {{ .MergeRequestStatusE }}</h2>
-                                <h2><strong>Aberto há:</strong> {{ .MergeRequestOpenTime }}</h2>
+                                <h2><strong>Open since:</strong> {{ .MergeRequestOpenTime }}</h2>
                             {{ if .MergeRequestTimeSinceLastDiscussion }}
-                                <h2><strong>Comentário mais antigo aberto há:</strong> {{ .MergeRequestTimeSinceLastDiscussion }}</h2>
+                                <h2><strong>Oldest open comment at:</strong> {{ .MergeRequestTimeSinceLastDiscussion }}</h2>
                             {{ end }}
                             {{ if .MergeRequestDiscussionResolved }}{{ if .MergeRequestDiscussionCount }}
-                                <h2><strong>Comentários resolvidos:</strong> {{ .MergeRequestDiscussionResolved }}/{{ .MergeRequestDiscussionCount }}</h2>
+                                <h2><strong>Solved discussions:</strong> {{ .MergeRequestDiscussionResolved }}/{{ .MergeRequestDiscussionCount }}</h2>
                             {{ end }}{{ end }}
                                 <h2><strong>URL:</strong> <a href=\"{{ .MergeRequestURL }}\">{{ .MergeRequestURL }}</a></h2><br/>"
                     },

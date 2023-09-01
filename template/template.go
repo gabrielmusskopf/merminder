@@ -6,6 +6,8 @@ import (
 	"sort"
 	"text/template"
 	"time"
+
+	"github.com/gabrielmusskopf/merminder/config"
 )
 
 var mergeRequestState = []string{"🙂", "🤨", "🙁", "🤒"}
@@ -16,7 +18,6 @@ type MergeRequestTemplates struct {
 
 type MergeRequestTemplate struct {
 	MergeRequestTitle                   string
-	MergeRequestCount                   int
 	MergeRequestStatusE                 string
 	MergeRequestOpenTime                string
 	MergeRequestTimeSinceLastDiscussion string
@@ -43,8 +44,6 @@ func ParseMergeRequests(mris []MergeRequestInfo) *MergeRequestTemplates {
 
 	for _, mri := range mris {
 		mrt := &MergeRequestTemplate{}
-
-		mrt.MergeRequestCount = len(mris)
 		mrt.MergeRequestTitle = mri.Title
 		mrt.MergeRequestStatusE = findState(mri)
 		mrt.MergeRequestOpenTime = formatTime(time.Since(mri.CreatedAt).Minutes())
@@ -100,7 +99,7 @@ func findState(mr MergeRequestInfo) string {
 }
 
 func (mrts *MergeRequestTemplates) ParseTemplateFile() (string, error) {
-	templFile := "merminder.tmpl"
+	templFile := config.GetConfig().Send.TemplateFilePath
 	template, err := template.New(templFile).ParseFiles(templFile)
 	if err != nil {
 		return "", err
