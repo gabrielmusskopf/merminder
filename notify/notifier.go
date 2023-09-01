@@ -4,22 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gabrielmusskopf/merminder/logger"
 )
 
-type MergeRequestInfo struct {
-	Title               string
-	CreatedAt           time.Time
-	TotalDiscussions    int
-	OpenDiscussions     int
-	TimeOlderDiscussion *time.Time
-	URL                 string
-}
-
 type Notifier interface {
-	Notify([]MergeRequestInfo)
+	Notify(string)
 }
 
 func Send(url string, body []byte) error {

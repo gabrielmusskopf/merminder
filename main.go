@@ -1,38 +1,22 @@
 package main
 
 import (
-	"os"
 	"time"
 
+	"github.com/gabrielmusskopf/merminder/config"
 	"github.com/gabrielmusskopf/merminder/logger"
 	"github.com/gabrielmusskopf/merminder/notify"
+	"github.com/gabrielmusskopf/merminder/template"
 	"github.com/go-co-op/gocron"
 	"github.com/xanzy/go-gitlab"
-	"gopkg.in/yaml.v3"
 )
 
 type Merminder struct {
-	config   *Config
 	notifier notify.Notifier
 }
 
-type Config struct {
-	Repository struct {
-		Host  string `yaml:"host"`
-		Token string `yaml:"token"`
-	}
-	Send struct {
-		WebhookURL string `yaml:"webhookUrl"`
-	}
-	Observe struct {
-		Groups   []int    `yaml:",flow"`
-		Projects []int    `yaml:",flow"`
-		Every    string   `yaml:"every"`
-		At       []string `yaml:",flow"`
-	}
-}
 
-func (m *Merminder) fetchMergeReqToApprove(mr *gitlab.MergeRequest, git *gitlab.Client) *notify.MergeRequestInfo {
+func (m *Merminder) fetchMergeReqToApprove(mr *gitlab.MergeRequest, git *gitlab.Client) *template.MergeRequestInfo {
 	approval, _, err := git.MergeRequestApprovals.GetConfiguration(mr.ProjectID, mr.IID)
 	if err != nil {
 		logger.Error(err)
@@ -68,7 +52,7 @@ func (m *Merminder) fetchMergeReqToApprove(mr *gitlab.MergeRequest, git *gitlab.
 			dateOlderDiscussion = nil
 		}
 
-		return &notify.MergeRequestInfo{
+		return &template.MergeRequestInfo{
 			Title:               mr.Title,
 			CreatedAt:           *mr.CreatedAt,
 			TotalDiscussions:    discussions,
@@ -82,13 +66,13 @@ func (m *Merminder) fetchMergeReqToApprove(mr *gitlab.MergeRequest, git *gitlab.
 
 func (m *Merminder) fetchMergeRequests(git *gitlab.Client) {
 	mrsFetched := make(map[int]*gitlab.MergeRequest, 0)
-	mrsToApprove := make([]notify.MergeRequestInfo, 0)
+	mrsToApprove := make([]template.MergeRequestInfo, 0)
 
-	if len(m.config.Observe.Groups) > 0 {
+	if len(config.GetConfig().Observe.Groups) > 0 {
 		gOpts := &gitlab.ListGroupMergeRequestsOptions{
 			State: gitlab.String("opened"),
 		}
-		for _, pid := range m.config.Observe.Groups {
+		for _, pid := range config.GetConfig().Observe.Groups {
 			mrs, _, err := git.MergeRequests.ListGroupMergeRequests(pid, gOpts)
 			if err != nil {
 				logger.Error(err)
@@ -104,11 +88,11 @@ func (m *Merminder) fetchMergeRequests(git *gitlab.Client) {
 		}
 	}
 
-	if len(m.config.Observe.Projects) > 0 {
+	if len(config.GetConfig().Observe.Projects) > 0 {
 		pOpts := &gitlab.ListProjectMergeRequestsOptions{
 			State: gitlab.String("opened"),
 		}
-		for _, pid := range m.config.Observe.Projects {
+		for _, pid := range config.GetConfig().Observe.Projects {
 			mrs, _, err := git.MergeRequests.ListProjectMergeRequests(pid, pOpts)
 			if err != nil {
 				logger.Error(err)
@@ -128,70 +112,31 @@ func (m *Merminder) fetchMergeRequests(git *gitlab.Client) {
 	}
 
 	logger.Info("total MRs fetched according to config: %d\n", len(mrsToApprove))
-	m.notifier.Notify(mrsToApprove)
-}
 
-func readConfig() *Config {
-	f, err := os.Open(".merminder.yml")
-	if err != nil {
-		logger.Fatal(err)
-	}
-	defer f.Close()
-
-	config := &Config{}
-
-	decoder := yaml.NewDecoder(f)
-	if err = decoder.Decode(&config); err != nil {
-		logger.Fatal(err)
-	}
-
-	if config.Repository.Token == "" {
-		logger.Fatals("token is missing")
-	}
-
-    if config.Observe.Every != "" && len(config.Observe.At) != 0 {
-        logger.Warning("cannot use 'observe.at' and 'obser.every' at the same time")
-        logger.Warning("only 'observe.every' will be considered")
-        config.Observe.At = make([]string, 0)
-    } else {
-        logger.Fatals("at least one observe frequency must be set: 'every' or 'at'")
+    t, err := template.ParseMergeRequests(mrsToApprove).ParseTemplateFile()
+    if err != nil {
+        logger.Error(err)
+        return
     }
-
-	return config
+    m.notifier.Notify(t)
 }
 
-func (c *Config) LogInfo() {
-    logger.Info("repository url: %s", c.Repository.Host)
-    logger.Info("webhook url: %s", c.Send.WebhookURL)
-    logger.Info("observed groups: %v", c.Observe.Groups)
-    logger.Info("observed projects: %v", c.Observe.Projects)
-    if c.Observe.Every != "" {
-        logger.Info("every: %s", c.Observe.Every)
-    } else if len(c.Observe.At) != 0 {
-        logger.Info("at: %s", c.Observe.At)
-    }
-}
-
-func (c *Config) DefaultHost() bool {
-	return c.Repository.Host == ""
-}
 
 func main() {
 
-	config := readConfig()
+	config := config.ReadConfig()
     config.LogInfo()
 
 	merminder := &Merminder{
-		config:   config,
 		notifier: notify.NewTeamsNotifier(config.Send.WebhookURL),
 	}
 
 	var opt gitlab.ClientOptionFunc
-	if !merminder.config.DefaultHost() {
-		opt = gitlab.WithBaseURL(merminder.config.Repository.Host)
+	if !config.DefaultHost() {
+		opt = gitlab.WithBaseURL(config.Repository.Host)
 	}
 
-	git, err := gitlab.NewClient(merminder.config.Repository.Token, opt)
+	git, err := gitlab.NewClient(config.Repository.Token, opt)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -203,13 +148,13 @@ func main() {
 
 	s := gocron.NewScheduler(location)
 
-	if merminder.config.Observe.Every != "" {
-		logger.Info("starting merminder with %s update frequency", merminder.config.Observe.Every)
-		s.Every(merminder.config.Observe.Every)
+	if config.Observe.Every != "" {
+		logger.Info("starting merminder with %s update frequency", config.Observe.Every)
+		s.Every(config.Observe.Every)
 
-	} else if len(merminder.config.Observe.At) != 0 {
+	} else if len(config.Observe.At) != 0 {
 
-		for _, at := range merminder.config.Observe.At {
+		for _, at := range config.Observe.At {
 			logger.Info("starting merminder with update scheluded to %s", at)
 			s.Every(1).Day().At(at)
 		}
