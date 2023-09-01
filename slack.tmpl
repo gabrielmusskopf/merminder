@@ -1,0 +1,56 @@
+{
+    "text": "Merge Requests",
+    "blocks": [
+        {
+    		"type": "header",
+            "text": {
+    			"type": "plain_text",
+    			"text": "Merge Requests: {{ . | len -}}"
+    		}
+        },
+    {{ range . }}
+    {
+        "type": "section",
+            "fields": [
+                {
+                    "type": "mrkdwn",
+                    "text": "*Title*:\n*{{ .MergeRequestTitle }}*"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": "*Status:*\n{{ .MergeRequestStatusE }}"
+                }
+            ]
+    },
+    {
+        "type": "section",
+            "fields": [
+                {
+                    "type": "mrkdwn",
+                    "text": "*Open since:*\n{{ .MergeRequestOpenTime }}\n"
+                },
+                {{ if .MergeRequestTimeSinceLastDiscussion }}
+                {
+                    "type": "mrkdwn",
+                        "text": "*Oldest open comment at:*\n{{ .MergeRequestTimeSinceLastDiscussion }}\n"
+                },
+                    {{- end -}}
+                {{ if .MergeRequestDiscussionResolved }}{{ if .MergeRequestDiscussionCount }}
+                {
+                    "type": "mrkdwn",
+                        "text": "*Solved discussions:*\n{{ .MergeRequestDiscussionResolved }}/{{ .MergeRequestDiscussionCount }}\n"
+                },
+                {{- end -}}{{- end -}}
+            ]
+    },
+
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "*URL:* <{{ .MergeRequestURL }}| Link>"
+            }
+        },
+    {{- end -}}
+    ]
+}
