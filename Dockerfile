@@ -8,7 +8,6 @@ RUN go mod download
 
 COPY . .
 
-RUN mkdir build
 RUN CGO_ENABLED=0 GOOS=linux go build -o ./merminder
 
 CMD ["./merminder"]
