@@ -36,9 +36,12 @@ func GetConfig() *Config {
 
 func ReadConfig() *Config {
 	f, err := os.Open(".merminder.yml")
-	if err != nil {
-		logger.Fatal(err)
-	}
+    if err != nil {
+        f, err = os.Open(".merminder.yaml")
+        if err != nil {
+            logger.Fatals("config file .merminder.yml or .merminder.yaml was not found")
+        }
+    }
 	defer f.Close()
 
 	config = &Config{}
