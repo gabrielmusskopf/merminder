@@ -16,6 +16,7 @@ type MergeRequestTemplates struct {
 	mergeRequests []*MergeRequestTemplate
 }
 
+//TODO: Add reactions
 type MergeRequestTemplate struct {
 	MergeRequestTitle                   string
 	MergeRequestStatusE                 string
