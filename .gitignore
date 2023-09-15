@@ -1,1 +1,5 @@
+# merminder configuration
 .merminder.*ml
+
+# bin
+bin/
