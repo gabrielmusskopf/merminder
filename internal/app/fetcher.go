@@ -3,6 +3,7 @@ package merminder
 import (
 	"time"
 
+	"github.com/go-co-op/gocron"
 	"github.com/xanzy/go-gitlab"
 )
 
@@ -10,6 +11,39 @@ type Service struct {
 	Notifier Notifier
     //TODO: Support multiple git instances, like GitHub or Bitbucket
 	Git      *gitlab.Client
+}
+
+func (s *Service) Start() {
+	location, err := time.LoadLocation(cfg.Observe.Location)
+	if err != nil {
+		Fatal(err)
+	}
+
+	sched := gocron.NewScheduler(location)
+
+	if cfg.Observe.Every != "" {
+		Info("starting merminder with %s update frequency", cfg.Observe.Every)
+		sched.Every(cfg.Observe.Every)
+
+	} else if len(cfg.Observe.At) != 0 {
+		for _, at := range cfg.Observe.At {
+			Info("starting merminder with update scheluded to %s", at)
+			sched.Every(1).Day().At(at)
+		}
+
+	} else {
+		Fatals("frequency time is missing. Either configure 'every' or 'at'")
+	}
+
+	_, err = sched.Do(func() {
+		s.FetchMergeRequests()
+	})
+	if err != nil {
+		Fatal(err)
+	}
+
+	sched.StartAsync()
+	select {}
 }
 
 func (s *Service) fetchMergeReqToApprove(mr *gitlab.MergeRequest) *MergeRequestInfo {
