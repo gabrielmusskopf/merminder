@@ -1,11 +1,9 @@
-package notify
+package merminder
 
 import (
 	"bytes"
 	"fmt"
 	"net/http"
-
-	"github.com/gabrielmusskopf/merminder/logger"
 )
 
 type Notifier struct {
@@ -35,7 +33,7 @@ func (n *Notifier) Notify(body string) error {
 		return fmt.Errorf("An error occur: %s %s", resp.Status, string(buff))
 	}
 
-	logger.Info("%s posted status to configured webhook", resp.Status)
+	Info("%s posted status to configured webhook", resp.Status)
 
 	return nil
 }

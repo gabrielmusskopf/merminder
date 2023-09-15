@@ -1,32 +1,28 @@
-package service
+package merminder
 
 import (
 	"time"
 
-	"github.com/gabrielmusskopf/merminder/config"
-	"github.com/gabrielmusskopf/merminder/logger"
-	"github.com/gabrielmusskopf/merminder/notify"
-	"github.com/gabrielmusskopf/merminder/template"
 	"github.com/xanzy/go-gitlab"
 )
 
 type Service struct {
-	Notifier notify.Notifier
+	Notifier Notifier
     //TODO: Support multiple git instances, like GitHub or Bitbucket
 	Git      *gitlab.Client
 }
 
-func (s *Service) fetchMergeReqToApprove(mr *gitlab.MergeRequest) *template.MergeRequestInfo {
+func (s *Service) fetchMergeReqToApprove(mr *gitlab.MergeRequest) *MergeRequestInfo {
 	approval, _, err := s.Git.MergeRequestApprovals.GetConfiguration(mr.ProjectID, mr.IID)
 	if err != nil {
-		logger.Error(err)
+		Error(err)
 		return nil
 	}
 
 	if !approval.Approved {
 		comments, _, err := s.Git.Discussions.ListMergeRequestDiscussions(mr.ProjectID, mr.IID, &gitlab.ListMergeRequestDiscussionsOptions{})
 		if err != nil {
-			logger.Error(err)
+			Error(err)
 			return nil
 		}
 
@@ -52,7 +48,7 @@ func (s *Service) fetchMergeReqToApprove(mr *gitlab.MergeRequest) *template.Merg
 			dateOlderDiscussion = nil
 		}
 
-		return &template.MergeRequestInfo{
+		return &MergeRequestInfo{
 			Title:               mr.Title,
 			CreatedAt:           *mr.CreatedAt,
 			TotalDiscussions:    discussions,
@@ -66,16 +62,16 @@ func (s *Service) fetchMergeReqToApprove(mr *gitlab.MergeRequest) *template.Merg
 
 func (s *Service) FetchMergeRequests() {
 	mrsFetched := make(map[int]*gitlab.MergeRequest, 0)
-	mrsToApprove := make([]template.MergeRequestInfo, 0)
+	mrsToApprove := make([]MergeRequestInfo, 0)
 
-	if len(config.GetConfig().Observe.Groups) > 0 {
+	if len(GetConfig().Observe.Groups) > 0 {
 		gOpts := &gitlab.ListGroupMergeRequestsOptions{
 			State: gitlab.String("opened"),
 		}
-		for _, pid := range config.GetConfig().Observe.Groups {
+		for _, pid := range GetConfig().Observe.Groups {
 			mrs, _, err := s.Git.MergeRequests.ListGroupMergeRequests(pid, gOpts)
 			if err != nil {
-				logger.Error(err)
+				Error(err)
 				return
 			}
 
@@ -88,14 +84,14 @@ func (s *Service) FetchMergeRequests() {
 		}
 	}
 
-	if len(config.GetConfig().Observe.Projects) > 0 {
+	if len(GetConfig().Observe.Projects) > 0 {
 		pOpts := &gitlab.ListProjectMergeRequestsOptions{
 			State: gitlab.String("opened"),
 		}
-		for _, pid := range config.GetConfig().Observe.Projects {
+		for _, pid := range GetConfig().Observe.Projects {
 			mrs, _, err := s.Git.MergeRequests.ListProjectMergeRequests(pid, pOpts)
 			if err != nil {
-				logger.Error(err)
+				Error(err)
 				return
 			}
 
@@ -111,16 +107,16 @@ func (s *Service) FetchMergeRequests() {
 		}
 	}
 
-	logger.Info("total MRs fetched according to config: %d\n", len(mrsToApprove))
+	Info("total MRs fetched according to config: %d\n", len(mrsToApprove))
 
-	t, err := template.ParseMergeRequests(mrsToApprove).ParseTemplateFile()
+	t, err := ParseMergeRequests(mrsToApprove).ParseTemplateFile()
 	if err != nil {
-		logger.Error(err)
+		Error(err)
 		return
 	}
-	if config.GetConfig().NotificationEnabled() {
+	if GetConfig().NotificationEnabled() {
 		if err := s.Notifier.Notify(t); err != nil {
-			logger.Error(err)
+			Error(err)
 		}
 	}
 }

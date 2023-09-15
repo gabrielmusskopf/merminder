@@ -2,14 +2,13 @@ FROM golang:1.20.3
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+COPY go.* ./
 
 RUN go mod download
 
-COPY . .
-RUN rm .merminder.yml || echo "not found"
-RUN rm .merminder.yaml || echo "not found"
+COPY ./cmd ./cmd
+COPY ./internal ./internal
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o ./merminder
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o ./bin/merminder ./cmd/merminder.go
 
-CMD ["./merminder"]
+CMD ["./bin/merminder"]

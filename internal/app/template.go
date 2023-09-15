@@ -1,4 +1,4 @@
-package template
+package merminder
 
 import (
 	"bytes"
@@ -6,8 +6,6 @@ import (
 	"sort"
 	"text/template"
 	"time"
-
-	"github.com/gabrielmusskopf/merminder/config"
 )
 
 var mergeRequestState = []string{"🙂", "🤨", "🙁", "🤒"}
@@ -100,7 +98,7 @@ func findState(mr MergeRequestInfo) string {
 }
 
 func (mrts *MergeRequestTemplates) ParseTemplateFile() (string, error) {
-	templFile := config.GetConfig().Send.TemplateFilePath
+	templFile := GetConfig().Send.TemplateFilePath
 	template, err := template.New(templFile).ParseFiles(templFile)
 	if err != nil {
 		return "", err
